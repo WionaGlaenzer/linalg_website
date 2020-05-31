@@ -1,197 +1,141 @@
-// Original code by Daniel Shiffman
-// http://youtube.com/thecodingtrain
-// http://codingtra.in
+'use strict';
 
-// Recaman Sequence Music
-// https://youtu.be/pYnaBQgnARQ
+/**
+ * Generate the sequence
+ */
+var ITERATIONS = 66;
+var sequence = [0];
+var curr = void 0;
 
-// Check also Alex Bellos and Edmund Harriss' work:
-// https://www.amazon.com/dp/1615193677/ref=cm_sw_em_r_mt_dp_U_GlwJCbG1ZXYQ8
+for (var i = 2; i < ITERATIONS; i++) {
+    curr = sequence[i - 2];
+    if (sequence.indexOf(curr - i) === -1 && curr - i > 0) {
+        sequence.push(curr - i);
+    } else {
+        sequence.push(curr + i);
+    }
+}
 
+/**
+ * Options
+ */
+var SCALING = 8;
+var ANIMATE = true;
+var ANIMSPEED = 0.1;
+var COLORSPEED = 5;
 
-// settings and presets
-let parDef = {
-Sequence: 'Recaman',
-attackLevel : 1,
-releaseLevel : 0,
-attackTime : 0.01,
-decayTime : 0.1,
-susPercent : 0.5,
-releaseTime : 0.5,
-PresetValues : function(){
-    this.attackTime = 0.01;
-    this.decayTime = 0.1;
-    this.susPercent = 0.5;
-    this.releaseTime = 0.5;
-    updateScketch();
-},
-ApplyChanges: updateScketch,
-Reset : resetC,
+/**
+ * Canvas setup
+ */
+var c = document.createElement('canvas');
+var ctx = c.getContext('2d');
+// Find the appropriate width of the canvas, i.e. the largest difference in the number line
+c.width = (Math.max.apply(Math, sequence) - Math.min.apply(Math, sequence)) * SCALING + Math.min.apply(Math, sequence) + 4;
+// Find the appropriate height of the canvas, i.e. the largest diameter
+for (var _i = 0, diff, max = 0; _i < sequence.length - 1; _i++) {
+    diff = Math.abs(sequence[_i + 1] - sequence[_i]);
+    if (diff > max) max = diff;
+    c.height = max * SCALING + 4;
+}
+// Adding some internal padding for antializing
+ctx.translate(2, 2);
+document.getElementById('wrapper').appendChild(c);
+
+/**
+ * Animated drawing
+ */
+var getPos = function getPos(i) {
+    return (sequence[i] + sequence[i + 1]) / 2;
+};
+var getRadius = function getRadius(i) {
+    return Math.abs(sequence[i] - sequence[i + 1]) / 2;
+};
+var isNextLarger = function isNextLarger(i) {
+    return sequence[i + 1] > sequence[i];
+};
+var isUp = function isUp(i) {
+    return Boolean(i % 2);
+};
+var nextframe = void 0,
+    progress = 0;
+
+var drawAnim = function drawAnim() {
+    // Clear the canvas
+    ctx.clearRect(0, 0, c.width, c.height);
+
+    // Previous circles
+    var index = Math.floor(progress);
+
+    for (var _i2 = 0, _pos, _radius, _spin = true; _i2 < index; _i2++) {
+        _pos = (sequence[_i2] + sequence[_i2 + 1]) / 2;
+        _radius = Math.abs(sequence[_i2 + 1] - sequence[_i2]) / 2;
+        ctx.strokeStyle = 'hsl(' + (180 + _i2 * COLORSPEED) + ', 50%, 50%)';
+        ctx.beginPath();
+        ctx.arc(_pos * SCALING, c.height / 2, _radius * SCALING, 0, Math.PI, _spin);
+        ctx.stroke();
+        _spin = !_spin;
+    }
+
+    // Animated part
+    var pos = getPos(index);
+    var radius = getRadius(index);
+    var arc = Math.PI * (progress - Math.floor(progress));
+    var start = isNextLarger(index) ? Math.PI : 0;
+    var end = isUp(index) && !isNextLarger(index) || !isUp(index) && isNextLarger(index) ? start + arc : start - arc;
+    var spin = isUp(index) && !isNextLarger(index) || !isUp(index) && isNextLarger(index) ? false : true;
+
+    ctx.strokeStyle = 'hsl(' + (180 + index * COLORSPEED) + ', 50%, 50%)';
+    ctx.beginPath();
+    ctx.arc(pos * SCALING, c.height / 2, radius * SCALING, start, end, spin);
+    ctx.stroke();
+
+    // Next frames
+    if (progress < sequence.length - 1) nextframe = requestAnimationFrame(drawAnim);
+    progress += ANIMSPEED;
 };
 
-let numbers = [];
-let count = 1;
-let sequence = [];
-let index = 0;
+/**
+ * Static drawing
+ */
+var drawStatic = function drawStatic() {
+    // Axes
+    ctx.beginPath();
+    ctx.moveTo(0, c.height / 2);
+    ctx.lineTo(c.width, c.height / 2);
+    ctx.stroke();
 
-let scl = 0;
+    // Curve
+    var spin = true;
+    var pos = void 0,
+        radius = void 0;
+    for (var _i3 = 0; _i3 < sequence.length - 1; _i3++) {
+        pos = (sequence[_i3] + sequence[_i3 + 1]) / 2;
+        radius = Math.abs(sequence[_i3 + 1] - sequence[_i3]) / 2;
+        ctx.strokeStyle = 'hsl(' + (180 + _i3 * COLORSPEED) + ', 50%, 50%)';
+        ctx.beginPath();
+        ctx.arc(pos * SCALING, c.height / 2, radius * SCALING, 0, Math.PI, spin);
+        ctx.stroke();
+        spin = !spin;
+    }
+};
 
-let arcs = [];
-
-let biggest = 0;
-
-let osc;
-
-let hu = 0;
-
-let clear = false;
-
-function backHome () {
-    window.location.href = "https://jcponce.github.io/#sketches";
+/**
+ * Startup
+ */
+if (ANIMATE) {
+    drawAnim();
+} else {
+    drawStatic();
 }
 
-class Arc {
-    constructor(start, end, dir) {
-        this.start = start;
-        this.end = end;
-        this.dir = dir;
-        this.hu = 0;
+/**
+ * Run again
+ */
+document.getElementById('run').onclick = function (ev) {
+    try {
+        cancelAnimationFrame(nextframe);
+    } catch (err) {} finally {
+        progress = 0;
+        drawAnim();
     }
-    
-    update() {
-        if(this.hu >= 355) {
-            this.hu = 0;
-        }
-        else {
-            this.hu++;
-        }
-    }
-    
-    show() {
-        let diameter = abs(this.end - this.start);
-        let x = (this.end + this.start) / 2;
-        stroke(this.hu,100,100);
-        strokeWeight(0.5);
-        noFill();
-        if (this.dir == 0) {
-            arc(x, 0, diameter, diameter, PI, 0);
-        } else {
-            arc(x, 0, diameter, diameter, 0, PI);
-        }
-    }
-    
-}
-
-function setup() {
-    createCanvas(windowWidth, windowHeight);
-    frameRate(5);
-    colorMode(HSB, 360, 100, 100);
-    
-    // create gui (dat.gui)
-    let gui = new dat.GUI();
-    gui.add(parDef, 'Sequence');
-    //gui.add(parDef, 'attackLevel'  , 0, 5 , 1 ).listen();
-    //gui.add(parDef, 'releaseLevel'  , 0, 5 , 1 ).listen();
-    gui.add(parDef, 'attackTime'  , 0, 0.07 , 0.001).listen();
-    gui.add(parDef, 'decayTime'  , 0, 1 , 0.001 ).listen();
-    gui.add(parDef, 'susPercent'  , 0, 1 , 0.001 ).listen();
-    gui.add(parDef, 'releaseTime'  , 0, 1 , 0.001 ).listen();
-    gui.add(parDef, 'ApplyChanges');
-    gui.add(parDef, 'PresetValues');
-    gui.add(parDef, 'Reset');
-    gui.add(this, 'backHome').name("Go Back Home");
-    gui.close();
-    
-    updateScketch();
-    
-    numbers[index] = true;
-    sequence.push(index);
-    
-}
-
-function updateScketch(){
-    
-    env = new p5.Env();
-    env.setADSR(parDef.attackTime, parDef.decayTime, parDef.susPercent, parDef.releaseTime);
-    env.setRange(parDef.attackLevel, parDef.releaseLevel);
-    
-    osc = new p5.Oscillator();
-    osc.setType('triangle');
-    osc.amp(env);
-    osc.start();
-    
-}
-
-
-function step() {
-    let next = index - count;
-    if (next < 0 || numbers[next]) {
-        next = index + count;
-    }
-    numbers[next] = true;
-    sequence.push(next);
-    
-    let a = new Arc(index, next, count % 2);
-    arcs.push(a);
-    index = next;
-    
-    let n = (index % 25) + 24;
-    let freq = pow(2, (n - 49) / 12) * 440;
-    osc.freq(freq);
-    env.play();
-    
-    if (index > biggest) {
-        biggest = index;
-    }
-    count++;
-}
-
-function resetC(){
-    
-    if(clear == false){
-        clear = true;
-    }else{
-        clear = false;
-    }
-    
-    
-}
-
-function draw() {
-    step();
-    translate(0, height / 2);
-    scl = lerp(scl, width / biggest, 0.1);
-    scale(scl);
-    background(0);
-    
-    for (let a of arcs) {
-        a.update();
-        a.show();
-    }
-    
-    
-    if (count > windowWidth) {
-        noLoop();
-    }
-    
-    if(clear==true){
-        fill(0);
-        noStroke();
-        for (let i = numbers.length-1; i>=1; i--) {
-            numbers.splice(i,1);
-        }
-        for (let i = sequence.length-1; i>=0; i--) {
-            sequence.splice(i,1);
-        }
-        for (let i = arcs.length-1; i>=0; i--) {
-            arcs.splice(i,1);
-        }
-        index = 0;
-        count = 1;
-        biggest = 0;
-        scl = 0;
-        
-        rect(0, -height/2, width, height);
-        clear=false;
-    }
-}
+};
