@@ -139,4 +139,3 @@ document.getElementById('run').onclick = function (ev) {
         drawAnim();
     }
 };
-
