@@ -1,141 +1,190 @@
-'use strict';
+/*
+	Hyperspace by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+*/
 
-/**
- * Generate the sequence
- */
-var ITERATIONS = 66;
-var sequence = [0];
-var curr = void 0;
+(function($) {
 
-for (var i = 2; i < ITERATIONS; i++) {
-    curr = sequence[i - 2];
-    if (sequence.indexOf(curr - i) === -1 && curr - i > 0) {
-        sequence.push(curr - i);
-    } else {
-        sequence.push(curr + i);
-    }
-}
+	var	$window = $(window),
+		$body = $('body'),
+		$sidebar = $('#sidebar');
 
-/**
- * Options
- */
-var SCALING = 8;
-var ANIMATE = true;
-var ANIMSPEED = 0.1;
-var COLORSPEED = 5;
+	// Breakpoints.
+		breakpoints({
+			xlarge:   [ '1281px',  '1680px' ],
+			large:    [ '981px',   '1280px' ],
+			medium:   [ '737px',   '980px'  ],
+			small:    [ '481px',   '736px'  ],
+			xsmall:   [ null,      '480px'  ]
+		});
 
-/**
- * Canvas setup
- */
-var c = document.createElement('canvas');
-var ctx = c.getContext('2d');
-// Find the appropriate width of the canvas, i.e. the largest difference in the number line
-c.width = (Math.max.apply(Math, sequence) - Math.min.apply(Math, sequence)) * SCALING + Math.min.apply(Math, sequence) + 4;
-// Find the appropriate height of the canvas, i.e. the largest diameter
-for (var _i = 0, diff, max = 0; _i < sequence.length - 1; _i++) {
-    diff = Math.abs(sequence[_i + 1] - sequence[_i]);
-    if (diff > max) max = diff;
-    c.height = max * SCALING + 4;
-}
-// Adding some internal padding for antializing
-ctx.translate(2, 2);
-document.getElementById('wrapper').appendChild(c);
+	// Hack: Enable IE flexbox workarounds.
+		if (browser.name == 'ie')
+			$body.addClass('is-ie');
 
-/**
- * Animated drawing
- */
-var getPos = function getPos(i) {
-    return (sequence[i] + sequence[i + 1]) / 2;
-};
-var getRadius = function getRadius(i) {
-    return Math.abs(sequence[i] - sequence[i + 1]) / 2;
-};
-var isNextLarger = function isNextLarger(i) {
-    return sequence[i + 1] > sequence[i];
-};
-var isUp = function isUp(i) {
-    return Boolean(i % 2);
-};
-var nextframe = void 0,
-    progress = 0;
+	// Play initial animations on page load.
+		$window.on('load', function() {
+			window.setTimeout(function() {
+				$body.removeClass('is-preload');
+			}, 100);
+		});
 
-var drawAnim = function drawAnim() {
-    // Clear the canvas
-    ctx.clearRect(0, 0, c.width, c.height);
+	// Forms.
 
-    // Previous circles
-    var index = Math.floor(progress);
+		// Hack: Activate non-input submits.
+			$('form').on('click', '.submit', function(event) {
 
-    for (var _i2 = 0, _pos, _radius, _spin = true; _i2 < index; _i2++) {
-        _pos = (sequence[_i2] + sequence[_i2 + 1]) / 2;
-        _radius = Math.abs(sequence[_i2 + 1] - sequence[_i2]) / 2;
-        ctx.strokeStyle = 'hsl(' + (180 + _i2 * COLORSPEED) + ', 50%, 50%)';
-        ctx.beginPath();
-        ctx.arc(_pos * SCALING, c.height / 2, _radius * SCALING, 0, Math.PI, _spin);
-        ctx.stroke();
-        _spin = !_spin;
-    }
+				// Stop propagation, default.
+					event.stopPropagation();
+					event.preventDefault();
 
-    // Animated part
-    var pos = getPos(index);
-    var radius = getRadius(index);
-    var arc = Math.PI * (progress - Math.floor(progress));
-    var start = isNextLarger(index) ? Math.PI : 0;
-    var end = isUp(index) && !isNextLarger(index) || !isUp(index) && isNextLarger(index) ? start + arc : start - arc;
-    var spin = isUp(index) && !isNextLarger(index) || !isUp(index) && isNextLarger(index) ? false : true;
+				// Submit form.
+					$(this).parents('form').submit();
 
-    ctx.strokeStyle = 'hsl(' + (180 + index * COLORSPEED) + ', 50%, 50%)';
-    ctx.beginPath();
-    ctx.arc(pos * SCALING, c.height / 2, radius * SCALING, start, end, spin);
-    ctx.stroke();
+			});
 
-    // Next frames
-    if (progress < sequence.length - 1) nextframe = requestAnimationFrame(drawAnim);
-    progress += ANIMSPEED;
-};
+	// Sidebar.
+		if ($sidebar.length > 0) {
 
-/**
- * Static drawing
- */
-var drawStatic = function drawStatic() {
-    // Axes
-    ctx.beginPath();
-    ctx.moveTo(0, c.height / 2);
-    ctx.lineTo(c.width, c.height / 2);
-    ctx.stroke();
+			var $sidebar_a = $sidebar.find('a');
 
-    // Curve
-    var spin = true;
-    var pos = void 0,
-        radius = void 0;
-    for (var _i3 = 0; _i3 < sequence.length - 1; _i3++) {
-        pos = (sequence[_i3] + sequence[_i3 + 1]) / 2;
-        radius = Math.abs(sequence[_i3 + 1] - sequence[_i3]) / 2;
-        ctx.strokeStyle = 'hsl(' + (180 + _i3 * COLORSPEED) + ', 50%, 50%)';
-        ctx.beginPath();
-        ctx.arc(pos * SCALING, c.height / 2, radius * SCALING, 0, Math.PI, spin);
-        ctx.stroke();
-        spin = !spin;
-    }
-};
+			$sidebar_a
+				.addClass('scrolly')
+				.on('click', function() {
 
-/**
- * Startup
- */
-if (ANIMATE) {
-    drawAnim();
-} else {
-    drawStatic();
-}
+					var $this = $(this);
 
-/**
- * Run again
- */
-document.getElementById('run').onclick = function (ev) {
-    try {
-        cancelAnimationFrame(nextframe);
-    } catch (err) {} finally {
-        progress = 0;
-        drawAnim();
-    }
-};
+					// External link? Bail.
+						if ($this.attr('href').charAt(0) != '#')
+							return;
+
+					// Deactivate all links.
+						$sidebar_a.removeClass('active');
+
+					// Activate link *and* lock it (so Scrollex doesn't try to activate other links as we're scrolling to this one's section).
+						$this
+							.addClass('active')
+							.addClass('active-locked');
+
+				})
+				.each(function() {
+
+					var	$this = $(this),
+						id = $this.attr('href'),
+						$section = $(id);
+
+					// No section for this link? Bail.
+						if ($section.length < 1)
+							return;
+
+					// Scrollex.
+						$section.scrollex({
+							mode: 'middle',
+							top: '-20vh',
+							bottom: '-20vh',
+							initialize: function() {
+
+								// Deactivate section.
+									$section.addClass('inactive');
+
+							},
+							enter: function() {
+
+								// Activate section.
+									$section.removeClass('inactive');
+
+								// No locked links? Deactivate all links and activate this section's one.
+									if ($sidebar_a.filter('.active-locked').length == 0) {
+
+										$sidebar_a.removeClass('active');
+										$this.addClass('active');
+
+									}
+
+								// Otherwise, if this section's link is the one that's locked, unlock it.
+									else if ($this.hasClass('active-locked'))
+										$this.removeClass('active-locked');
+
+							}
+						});
+
+				});
+
+		}
+
+	// Scrolly.
+		$('.scrolly').scrolly({
+			speed: 1000,
+			offset: function() {
+
+				// If <=large, >small, and sidebar is present, use its height as the offset.
+					if (breakpoints.active('<=large')
+					&&	!breakpoints.active('<=small')
+					&&	$sidebar.length > 0)
+						return $sidebar.height();
+
+				return 0;
+
+			}
+		});
+
+	// Spotlights.
+		$('.spotlights > section')
+			.scrollex({
+				mode: 'middle',
+				top: '-10vh',
+				bottom: '-10vh',
+				initialize: function() {
+
+					// Deactivate section.
+						$(this).addClass('inactive');
+
+				},
+				enter: function() {
+
+					// Activate section.
+						$(this).removeClass('inactive');
+
+				}
+			})
+			.each(function() {
+
+				var	$this = $(this),
+					$image = $this.find('.image'),
+					$img = $image.find('img'),
+					x;
+
+				// Assign image.
+					$image.css('background-image', 'url(' + $img.attr('src') + ')');
+
+				// Set background position.
+					if (x = $img.data('position'))
+						$image.css('background-position', x);
+
+				// Hide <img>.
+					$img.hide();
+
+			});
+
+	// Features.
+		$('.features')
+			.scrollex({
+				mode: 'middle',
+				top: '-20vh',
+				bottom: '-20vh',
+				initialize: function() {
+
+					// Deactivate section.
+						$(this).addClass('inactive');
+
+				},
+				enter: function() {
+
+					// Activate section.
+						$(this).removeClass('inactive');
+
+				}
+			});
+
+})(jQuery);
