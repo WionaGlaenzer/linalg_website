@@ -32,6 +32,13 @@ body {
 	line-height: 1;
 }
 
+.header-image {
+    width: 100%; /* Ensures the image takes full width of the container */
+    height: auto; /* Maintains the aspect ratio */
+    display: block; /* Centers the image in the container */
+    margin: 0 auto; /* Additional centering for the image */
+}
+
 ol, ul {
 	list-style: none;
 }
